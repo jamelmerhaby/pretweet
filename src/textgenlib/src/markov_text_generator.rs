@@ -1,10 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::Chars;
 
 use crate::weighted_char::WeightedChar;
+use crate::weighted_char_set::WeightedCharSet;
 
 pub struct MarkovTextGenerator {
-    chain: HashMap<char, HashSet<WeightedChar>>,
+    chain: HashMap<char, WeightedCharSet>,
 }
 
 impl MarkovTextGenerator {
@@ -26,7 +27,7 @@ impl MarkovTextGenerator {
                 let mut prev = value;
                 for c in chars_itr {
                     if !self.chain.contains_key(&prev) {
-                        self.chain.insert(prev, HashSet::new());
+                        self.chain.insert(prev, WeightedCharSet::new());
                     }
                     let mut chain = self.chain.remove(&prev).unwrap();
                     Self::update(&mut chain, WeightedChar::new_with_weight(c, 1));
@@ -37,18 +38,24 @@ impl MarkovTextGenerator {
         }
     }
 
-    fn update(chain: &mut HashSet<WeightedChar>, weighted_char: WeightedChar) {
+    fn update(chain: &mut WeightedCharSet, weighted_char: WeightedChar) {
+        let mut weight = 0;
         let existing = chain.get(&weighted_char);
         match existing {
             None => {
                 chain.insert(weighted_char);
+                return;
             }
             Some(old) => {
-                let old_char = old.get_char();
-                let old_weight = old.get_weight();
-                chain.insert(WeightedChar::new_with_weight(old_char, old_weight + 1));
+                weight += old.get_weight() + 1;
             }
         }
+
+        chain.remove(&weighted_char);
+        chain.insert(WeightedChar::new_with_weight(
+            weighted_char.get_char(),
+            weight,
+        ));
     }
 }
 
@@ -74,7 +81,21 @@ mod tests {
             Some(next) => {
                 assert_eq!(next.contains(&WeightedChar::new('b')), true);
             }
-            _ => panic!(format!("Expected to find 'b' in the next chain.")),
+            None => panic!(format!("Expected to find 'b' in the next chain.")),
+        }
+    }
+
+    #[test]
+    fn weight_increases() {
+        let mut markov = MarkovTextGenerator::new();
+        markov.load("ababab");
+
+        match markov.chain.remove(&'a') {
+            Some(next) => match next.get(&WeightedChar::new('b')) {
+                Some(value) => assert_eq!(value.get_weight(), 3),
+                None => panic!(format!("Expected to find a WeightedChar for 'b'")),
+            },
+            None => panic!(format!("Expected to find 'b' in the next chain.")),
         }
     }
 }
