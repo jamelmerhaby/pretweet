@@ -78,15 +78,3 @@ mod tests {
         }
     }
 }
-
-/*
-
-
-    // Takes a reference and returns Option<&V>
-    match contacts.get(&"Daniel") {
-        Some(&number) => println!("Calling Daniel: {}", call(number)),
-        _ => println!("Don't have Daniel's number."),
-    }
-
-
-*/
